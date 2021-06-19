@@ -7,6 +7,7 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use crate::{Error, Hash, Result};
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use threshold_crypto::{serde_impl::SerdeSecret, SecretKeyShare, SignatureShare};
@@ -28,17 +29,18 @@ impl NodeSignature {
     }
 }
 
+#[async_trait]
 pub trait KeyManager {
     type Error: std::error::Error;
-    fn sign(&self, msg_hash: &Hash) -> Result<NodeSignature, Self::Error>;
-    fn public_key_set(&self) -> Result<PublicKeySet, Self::Error>;
-    fn verify(
+    async fn sign(&self, msg_hash: &Hash) -> Result<NodeSignature, Self::Error>;
+    async fn public_key_set(&self) -> Result<PublicKeySet, Self::Error>;
+    async fn verify(
         &self,
         msg_hash: &Hash,
         key: &PublicKey,
         signature: &Signature,
     ) -> Result<(), Self::Error>;
-    fn verify_known_key(&self, key: &PublicKey) -> Result<(), Self::Error>;
+    async fn verify_known_key(&self, key: &PublicKey) -> Result<(), Self::Error>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,25 +91,26 @@ impl SimpleKeyManager {
     }
 }
 
+#[async_trait]
 impl KeyManager for SimpleKeyManager {
     type Error = crate::Error;
 
-    fn public_key_set(&self) -> Result<PublicKeySet> {
+    async fn public_key_set(&self) -> Result<PublicKeySet> {
         Ok(self.signer.public_key_set())
     }
 
-    fn sign(&self, msg_hash: &Hash) -> Result<NodeSignature> {
+    async fn sign(&self, msg_hash: &Hash) -> Result<NodeSignature> {
         Ok(NodeSignature::new(
             self.signer.index(),
             self.signer.sign(msg_hash),
         ))
     }
 
-    fn verify(&self, msg_hash: &Hash, key: &PublicKey, signature: &Signature) -> Result<()> {
+    async fn verify(&self, msg_hash: &Hash, key: &PublicKey, signature: &Signature) -> Result<()> {
         self.cache.verify(msg_hash, key, signature)
     }
 
-    fn verify_known_key(&self, key: &PublicKey) -> Result<()> {
+    async fn verify_known_key(&self, key: &PublicKey) -> Result<()> {
         self.cache.verify_known_key(key)
     }
 }

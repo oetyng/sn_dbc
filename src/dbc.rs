@@ -31,7 +31,7 @@ impl Dbc {
 
     // Check there exists a DbcTransaction with the output containing this Dbc
     // Check there DOES NOT exist a DbcTransaction with this Dbc as parent (already minted)
-    pub fn confirm_valid<K: KeyManager>(&self, verifier: &K) -> Result<(), Error> {
+    pub async fn confirm_valid<K: KeyManager>(&self, verifier: &K) -> Result<(), Error> {
         for (input, (mint_key, mint_sig)) in self.transaction_sigs.iter() {
             if !self.transaction.inputs.contains(input) {
                 return Err(Error::UnknownInput);
@@ -39,6 +39,7 @@ impl Dbc {
 
             verifier
                 .verify(&self.transaction.hash(), &mint_key, &mint_sig)
+                .await
                 .map_err(|e| Error::Signing(e.to_string()))?;
         }
         if self.transaction.inputs.is_empty() {
@@ -58,16 +59,14 @@ impl Dbc {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    use std::collections::{BTreeSet, HashMap, HashSet};
-    use std::iter::FromIterator;
-
-    use quickcheck_macros::quickcheck;
-
     use crate::tests::{NonZeroTinyInt, TinyInt};
     use crate::{
         KeyManager, Mint, ReissueRequest, ReissueTransaction, SimpleKeyManager, SimpleSigner,
     };
+    use futures::executor::block_on as block;
+    use quickcheck_macros::quickcheck;
+    use std::collections::{BTreeSet, HashMap, HashSet};
+    use std::iter::FromIterator;
 
     fn divide(amount: u64, n_ways: u8) -> impl Iterator<Item = u64> {
         (0..n_ways).into_iter().map(move |i| {
@@ -145,7 +144,7 @@ mod tests {
         );
 
         assert!(matches!(
-            dbc.confirm_valid(&key_manager),
+            block(dbc.confirm_valid(&key_manager)),
             Err(Error::TransactionMustHaveAnInput)
         ));
     }
@@ -176,7 +175,7 @@ mod tests {
         let mut genesis_node = Mint::new(key_manager);
 
         let (gen_dbc_content, gen_dbc_trans, (gen_key_set, gen_node_sig)) =
-            genesis_node.issue_genesis_dbc(amount).unwrap();
+            block(genesis_node.issue_genesis_dbc(amount)).unwrap();
 
         let genesis_sig = gen_key_set
             .combine_signatures(vec![gen_node_sig.threshold_crypto()])
@@ -204,9 +203,8 @@ mod tests {
             .iter()
             .map(|i| i.name())
             .collect();
-        let (split_transaction, split_transaction_sigs) = genesis_node
-            .reissue(reissue_request.clone(), input_hashes)
-            .unwrap();
+        let (split_transaction, split_transaction_sigs) =
+            block(genesis_node.reissue(reissue_request.clone(), input_hashes)).unwrap();
 
         assert_eq!(split_transaction, reissue_request.transaction.blinded());
 
@@ -261,9 +259,8 @@ mod tests {
             input_ownership_proofs,
         };
 
-        let (transaction, transaction_sigs) = genesis_node
-            .reissue(reissue_request.clone(), input_hashes.clone())
-            .unwrap();
+        let (transaction, transaction_sigs) =
+            block(genesis_node.reissue(reissue_request.clone(), input_hashes.clone())).unwrap();
         assert_eq!(reissue_request.transaction.blinded(), transaction);
 
         let (mint_key_set, mint_sig_share) = transaction_sigs.values().next().unwrap();
@@ -315,7 +312,7 @@ mod tests {
                     SimpleSigner::new(id.public_key_set.clone(), (0, id.secret_key_share.clone())),
                     genesis_key,
                 );
-                let trans_sig_share = key_manager.sign(&transaction.hash()).unwrap();
+                let trans_sig_share = block(key_manager.sign(&transaction.hash())).unwrap();
                 let trans_sig = id
                     .public_key_set
                     .combine_signatures(vec![trans_sig_share.threshold_crypto()])
@@ -328,10 +325,8 @@ mod tests {
         // Valid mint signatures BUT signing wrong message
         for _ in 0..n_wrong_msg_sigs.coerce() {
             if let Some(input) = repeating_inputs.next() {
-                let wrong_msg_sig = genesis_node.key_manager.sign(&Hash([0u8; 32])).unwrap();
-                let wrong_msg_mint_sig = genesis_node
-                    .key_manager
-                    .public_key_set()
+                let wrong_msg_sig = block(genesis_node.key_manager.sign(&Hash([0u8; 32]))).unwrap();
+                let wrong_msg_mint_sig = block(genesis_node.key_manager.public_key_set())
                     .unwrap()
                     .combine_signatures(vec![wrong_msg_sig.threshold_crypto()])
                     .unwrap();
@@ -356,7 +351,7 @@ mod tests {
             SimpleSigner::new(id.public_key_set.clone(), (0, id.secret_key_share)),
             genesis_key,
         );
-        let validation_res = dbc.confirm_valid(&key_manager);
+        let validation_res = block(dbc.confirm_valid(&key_manager));
 
         println!("Validation Result: {:#?}", validation_res);
         match validation_res {
@@ -406,14 +401,14 @@ mod tests {
                 assert!(dbc
                     .transaction_sigs
                     .values()
-                    .any(|(k, _)| key_manager.verify_known_key(k).is_err()));
+                    .any(|(k, _)| block(key_manager.verify_known_key(k)).is_err()));
             }
             Err(Error::Signing(s)) if s == Error::UnrecognisedAuthority.to_string() => {
                 assert!(n_wrong_signer_sigs.coerce::<u8>() > 0);
                 assert!(dbc
                     .transaction_sigs
                     .values()
-                    .any(|(k, _)| key_manager.verify_known_key(k).is_err()));
+                    .any(|(k, _)| block(key_manager.verify_known_key(k)).is_err()));
             }
             res => panic!("Unexpected verification result {:?}", res),
         }
