@@ -8,7 +8,7 @@
 
 use crate::{Error, Hash, Result};
 use async_trait::async_trait;
-use bls::{serde_impl::SerdeSecret, SecretKeyShare, SignatureShare};
+use bls::{serde_impl::SerdeSecret, PublicKeyShare, SecretKeyShare, SignatureShare};
 pub use bls::{PublicKey, PublicKeySet, Signature};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -29,10 +29,27 @@ impl NodeSignature {
     }
 }
 
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
+pub struct NodeKey {
+    pub index: u64,
+    pub key: PublicKeyShare,
+}
+
+impl NodeKey {
+    pub fn new(index: u64, key: PublicKeyShare) -> Self {
+        Self { index, key }
+    }
+
+    pub fn bls(&self) -> (u64, &PublicKeyShare) {
+        (self.index, &self.key)
+    }
+}
+
 #[async_trait]
 pub trait KeyManager {
     type Error: std::error::Error;
     async fn sign(&self, msg_hash: &Hash) -> Result<NodeSignature, Self::Error>;
+    async fn node_key(&self) -> Result<NodeKey, Self::Error>;
     async fn public_key_set(&self) -> Result<PublicKeySet, Self::Error>;
     async fn verify(
         &self,
@@ -59,6 +76,10 @@ impl SimpleSigner {
 
     fn index(&self) -> u64 {
         self.secret_key_share.0
+    }
+
+    fn public_key_share(&self) -> PublicKeyShare {
+        self.public_key_set.public_key_share(self.index())
     }
 
     fn public_key_set(&self) -> PublicKeySet {
@@ -97,6 +118,13 @@ impl KeyManager for SimpleKeyManager {
 
     async fn public_key_set(&self) -> Result<PublicKeySet> {
         Ok(self.signer.public_key_set())
+    }
+
+    async fn node_key(&self) -> Result<NodeKey> {
+        Ok(NodeKey::new(
+            self.signer.index(),
+            self.signer.public_key_share(),
+        ))
     }
 
     async fn sign(&self, msg_hash: &Hash) -> Result<NodeSignature> {

@@ -29,7 +29,7 @@ pub use crate::{
     dbc_transaction::DbcTransaction,
     error::{Error, Result},
     key_manager::{
-        KeyManager, NodeSignature, PublicKey, PublicKeySet, Signature, SimpleKeyManager,
+        KeyManager, NodeKey, NodeSignature, PublicKey, PublicKeySet, Signature, SimpleKeyManager,
         SimpleSigner,
     },
     mint::{Mint, MintSignatures, ReissueRequest, ReissueTransaction, GENESIS_DBC_INPUT},
