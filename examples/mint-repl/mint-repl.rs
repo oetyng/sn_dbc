@@ -10,6 +10,9 @@
 //! Safe Network DBC Mint CLI playground.
 
 use anyhow::{anyhow, Error, Result};
+use bls::poly::Poly;
+use bls::serde_impl::SerdeSecret;
+use bls::{PublicKey, PublicKeySet, SecretKeySet, SecretKeyShare, Signature, SignatureShare};
 use futures::executor::block_on as block;
 use rustyline::config::Configurer;
 use rustyline::error::ReadlineError;
@@ -21,11 +24,6 @@ use sn_dbc::{
 };
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::iter::FromIterator;
-use threshold_crypto::poly::Poly;
-use threshold_crypto::serde_impl::SerdeSecret;
-use threshold_crypto::{
-    PublicKey, PublicKeySet, SecretKeySet, SecretKeyShare, Signature, SignatureShare,
-};
 
 /// Holds information about the Mint, which may be comprised
 /// of 1 or more nodes.
@@ -205,10 +203,7 @@ fn mk_new_mint(secret_key_set: SecretKeySet, poly: Poly, amount: u64) -> Result<
     }
 
     // Make a list of (Index, SignatureShare) for combining sigs.
-    let node_sigs: Vec<(u64, &SignatureShare)> = genesis_set
-        .iter()
-        .map(|e| e.2 .1.threshold_crypto())
-        .collect();
+    let node_sigs: Vec<(u64, &SignatureShare)> = genesis_set.iter().map(|e| e.2 .1.bls()).collect();
 
     // Todo: in a true multi-node mint, each node would call issue_genesis_dbc(), then the aggregated
     // signatures would be combined here, so this mk_new_mint fn would to be broken apart.
@@ -956,10 +951,8 @@ fn reissue_exec(
     }
 
     // Transform Vec<NodeSignature> to Vec<u64, &SignatureShare>
-    let mint_sig_shares_ref: Vec<(u64, &SignatureShare)> = mint_sig_shares
-        .iter()
-        .map(|e| e.threshold_crypto())
-        .collect();
+    let mint_sig_shares_ref: Vec<(u64, &SignatureShare)> =
+        mint_sig_shares.iter().map(|e| e.bls()).collect();
 
     // Combine signatures from all the mint nodes to obtain Mint's Signature.
     let mint_sig = mintinfo
@@ -1094,7 +1087,7 @@ fn decode<T: AsRef<[u8]>>(data: T) -> Result<Vec<u8>> {
     hex::decode(data).map_err(|e| anyhow!(e))
 }
 
-// borrowed from: https://github.com/iancoleman/threshold_crypto_ui/blob/master/src/lib.rs
+// borrowed from: https://github.com/iancoleman/bls_ui/blob/master/src/lib.rs
 //
 // bincode is little endian encoding, see
 // https://docs.rs/bincode/1.3.2/bincode/config/trait.Options.html#options

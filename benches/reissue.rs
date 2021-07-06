@@ -35,7 +35,7 @@ fn genesis(amount: u64) -> (Mint<SimpleKeyManager>, bls_dkg::outcome::Outcome, D
         block(genesis_node.issue_genesis_dbc(amount)).unwrap();
 
     let mint_sig = mint_key_set
-        .combine_signatures(vec![mint_sig_share.threshold_crypto()])
+        .combine_signatures(vec![mint_sig_share.bls()])
         .unwrap();
 
     let transaction_sigs = BTreeMap::from_iter(
@@ -142,7 +142,7 @@ fn bench_reissue_100_to_1(c: &mut Criterion) {
 
     let mint_sig = genesis_owner
         .public_key_set
-        .combine_signatures(vec![mint_sig_share.threshold_crypto()])
+        .combine_signatures(vec![mint_sig_share.bls()])
         .unwrap();
 
     let dbcs = Vec::from_iter(outputs.into_iter().map(|content| Dbc {

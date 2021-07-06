@@ -7,9 +7,9 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use crate::{DbcContentHash, Error, Hash};
+use bls::PublicKey;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
-use threshold_crypto::PublicKey;
 use tiny_keccak::{Hasher, Sha3};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]

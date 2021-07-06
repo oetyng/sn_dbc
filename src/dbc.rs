@@ -82,7 +82,7 @@ mod tests {
         dbc_owner: &bls_dkg::outcome::Outcome,
         dbc: &Dbc,
         n_ways: u8,
-        output_owner: &threshold_crypto::PublicKeySet,
+        output_owner: &bls::PublicKeySet,
     ) -> ReissueRequest {
         let inputs = HashSet::from_iter(vec![dbc.clone()]);
         let input_hashes = BTreeSet::from_iter(inputs.iter().map(|in_dbc| in_dbc.name()));
@@ -178,7 +178,7 @@ mod tests {
             block(genesis_node.issue_genesis_dbc(amount)).unwrap();
 
         let genesis_sig = gen_key_set
-            .combine_signatures(vec![gen_node_sig.threshold_crypto()])
+            .combine_signatures(vec![gen_node_sig.bls()])
             .unwrap();
 
         let genesis_dbc = Dbc {
@@ -210,7 +210,7 @@ mod tests {
 
         let (mint_key_set, mint_sig_share) = split_transaction_sigs.values().next().unwrap();
         let mint_sig = mint_key_set
-            .combine_signatures(vec![mint_sig_share.threshold_crypto()])
+            .combine_signatures(vec![mint_sig_share.bls()])
             .unwrap();
 
         let inputs = HashSet::from_iter(reissue_request.transaction.outputs.into_iter().map(
@@ -265,7 +265,7 @@ mod tests {
 
         let (mint_key_set, mint_sig_share) = transaction_sigs.values().next().unwrap();
         let mint_sig = mint_key_set
-            .combine_signatures(vec![mint_sig_share.threshold_crypto()])
+            .combine_signatures(vec![mint_sig_share.bls()])
             .unwrap();
 
         let fuzzed_parents = BTreeSet::from_iter(
@@ -315,7 +315,7 @@ mod tests {
                 let trans_sig_share = block(key_manager.sign(&transaction.hash())).unwrap();
                 let trans_sig = id
                     .public_key_set
-                    .combine_signatures(vec![trans_sig_share.threshold_crypto()])
+                    .combine_signatures(vec![trans_sig_share.bls()])
                     .unwrap();
                 fuzzed_transaction_sigs
                     .insert(input.name(), (id.public_key_set.public_key(), trans_sig));
@@ -328,7 +328,7 @@ mod tests {
                 let wrong_msg_sig = block(genesis_node.key_manager.sign(&Hash([0u8; 32]))).unwrap();
                 let wrong_msg_mint_sig = block(genesis_node.key_manager.public_key_set())
                     .unwrap()
-                    .combine_signatures(vec![wrong_msg_sig.threshold_crypto()])
+                    .combine_signatures(vec![wrong_msg_sig.bls()])
                     .unwrap();
 
                 fuzzed_transaction_sigs.insert(input.name(), (genesis_key, wrong_msg_mint_sig));

@@ -118,8 +118,7 @@ impl ReissueTransaction {
 pub struct ReissueRequest {
     pub transaction: ReissueTransaction,
     // Signatures from the owners of each input, signing `self.transaction.blinded().hash()`
-    pub input_ownership_proofs:
-        HashMap<DbcContentHash, (threshold_crypto::PublicKey, threshold_crypto::Signature)>,
+    pub input_ownership_proofs: HashMap<DbcContentHash, (bls::PublicKey, bls::Signature)>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -305,7 +304,7 @@ mod tests {
             block(genesis_node.issue_genesis_dbc(1000)).unwrap();
 
         let genesis_sig = gen_key_set
-            .combine_signatures(vec![gen_node_sig.threshold_crypto()])
+            .combine_signatures(vec![gen_node_sig.bls()])
             .unwrap();
 
         let genesis_dbc = Dbc {
@@ -341,7 +340,7 @@ mod tests {
         let (gen_dbc_content, gen_dbc_trans, (gen_key_set, gen_node_sig)) =
             block(genesis_node.issue_genesis_dbc(output_amount)).unwrap();
         let genesis_sig = gen_key_set
-            .combine_signatures(vec![gen_node_sig.threshold_crypto()])
+            .combine_signatures(vec![gen_node_sig.bls()])
             .unwrap();
 
         let genesis_dbc = Dbc {
@@ -403,7 +402,7 @@ mod tests {
 
         let mint_sig = genesis_owner
             .public_key_set
-            .combine_signatures(vec![sig.threshold_crypto()])
+            .combine_signatures(vec![sig.bls()])
             .unwrap();
 
         let output_dbcs =
@@ -447,7 +446,7 @@ mod tests {
         let (gen_dbc_content, gen_dbc_trans, (gen_key_set, gen_node_sig)) =
             block(genesis_node.issue_genesis_dbc(1000)).unwrap();
         let genesis_sig = gen_key_set
-            .combine_signatures(vec![gen_node_sig.threshold_crypto()])
+            .combine_signatures(vec![gen_node_sig.bls()])
             .unwrap();
 
         let genesis_dbc = Dbc {
@@ -475,7 +474,7 @@ mod tests {
         let sig_share = block(genesis_node.key_manager.sign(&transaction.blinded().hash()))?;
 
         let sig = block(genesis_node.key_manager.public_key_set())?
-            .combine_signatures(vec![sig_share.threshold_crypto()])
+            .combine_signatures(vec![sig_share.bls()])
             .unwrap();
 
         let reissue_req = ReissueRequest {
@@ -508,7 +507,7 @@ mod tests {
         )?;
 
         let sig = block(genesis_node.key_manager.public_key_set())?
-            .combine_signatures(vec![node_share.threshold_crypto()])
+            .combine_signatures(vec![node_share.bls()])
             .unwrap();
 
         let double_spend_reissue_req = ReissueRequest {
@@ -584,7 +583,7 @@ mod tests {
 
         let genesis_sig = block(genesis_node.key_manager.public_key_set())
             .unwrap()
-            .combine_signatures(vec![gen_node_sig.threshold_crypto()])
+            .combine_signatures(vec![gen_node_sig.bls()])
             .unwrap();
 
         let genesis_dbc = Dbc {
@@ -628,7 +627,7 @@ mod tests {
         .unwrap();
         let sig = block(genesis_node.key_manager.public_key_set())
             .unwrap()
-            .combine_signatures(vec![sig_share.threshold_crypto()])
+            .combine_signatures(vec![sig_share.bls()])
             .unwrap();
         reissue_req.input_ownership_proofs.insert(
             genesis_dbc.name(),
@@ -646,7 +645,7 @@ mod tests {
         let (mint_key_set, mint_sig_share) = transaction_sigs.values().cloned().next().unwrap();
 
         let mint_sig = mint_key_set
-            .combine_signatures(vec![mint_sig_share.threshold_crypto()])
+            .combine_signatures(vec![mint_sig_share.bls()])
             .unwrap();
 
         let input_dbcs = HashSet::from_iter(input_content.into_iter().map(|content| {
@@ -689,10 +688,8 @@ mod tests {
 
         let transaction_hash = transaction.blinded().hash();
 
-        let mut input_ownership_proofs: HashMap<
-            crate::Hash,
-            (threshold_crypto::PublicKey, threshold_crypto::Signature),
-        > = Default::default();
+        let mut input_ownership_proofs: HashMap<crate::Hash, (bls::PublicKey, bls::Signature)> =
+            Default::default();
         input_ownership_proofs.extend(
             inputs_to_create_owner_proofs
                 .iter()
@@ -777,7 +774,7 @@ mod tests {
 
                 let (mint_key_set, mint_sig_share) = transaction_sigs.values().next().unwrap();
                 let mint_sig = mint_key_set
-                    .combine_signatures(vec![mint_sig_share.threshold_crypto()])
+                    .combine_signatures(vec![mint_sig_share.bls()])
                     .unwrap();
 
                 let output_dbcs = Vec::from_iter(outputs.into_iter().map(|content| {

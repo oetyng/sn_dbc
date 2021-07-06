@@ -8,10 +8,10 @@
 
 use crate::{Error, Hash, Result};
 use async_trait::async_trait;
+use bls::{serde_impl::SerdeSecret, SecretKeyShare, SignatureShare};
+pub use bls::{PublicKey, PublicKeySet, Signature};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use threshold_crypto::{serde_impl::SerdeSecret, SecretKeyShare, SignatureShare};
-pub use threshold_crypto::{PublicKey, PublicKeySet, Signature};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub struct NodeSignature {
@@ -24,7 +24,7 @@ impl NodeSignature {
         Self { index, sig }
     }
 
-    pub fn threshold_crypto(&self) -> (u64, &SignatureShare) {
+    pub fn bls(&self) -> (u64, &SignatureShare) {
         (self.index, &self.sig)
     }
 }
@@ -65,7 +65,7 @@ impl SimpleSigner {
         self.public_key_set.clone()
     }
 
-    fn sign<M: AsRef<[u8]>>(&self, msg: M) -> threshold_crypto::SignatureShare {
+    fn sign<M: AsRef<[u8]>>(&self, msg: M) -> bls::SignatureShare {
         self.secret_key_share.1.sign(msg)
     }
 }
